@@ -66,9 +66,19 @@ export function AuthProvider({ children }) {
         return data.user;
     };
 
-    const loginWithGoogle = async (role = 'customer') => {
+    const loginWithGoogle = async (role = null) => {
         const result = await signInWithPopup(auth, googleProvider);
-        return await _syncWithBackend(result.user, role);
+
+        try {
+            // First try to login, let backend decide if it needs a role
+            return await _syncWithBackend(result.user, role);
+        } catch (err) {
+            // If backend throws our special 409 error, pass it back to UI
+            if (err.message === 'needs_role') {
+                return { needs_role: true, firebaseUser: result.user };
+            }
+            throw err;
+        }
     };
 
     const logout = async () => {

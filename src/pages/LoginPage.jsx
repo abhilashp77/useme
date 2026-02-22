@@ -9,6 +9,7 @@ export default function LoginPage() {
     });
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [pendingSocialUser, setPendingSocialUser] = useState(null); // stores the firebase user if they need to pick a role
     const { login, register, loginWithGoogle } = useAuth();
     const navigate = useNavigate();
 
@@ -16,9 +17,16 @@ export default function LoginPage() {
         setError('');
         setLoading(true);
         try {
-            const role = isLogin ? 'customer' : formData.role;
+            // We pass null for role initially to let the backend check if user exists
             let user;
-            if (provider === 'google') user = await loginWithGoogle(role);
+            if (provider === 'google') user = await loginWithGoogle(null);
+
+            // If backend returns a special "needs_role" flag (we'll add this), show the modal
+            if (user.needs_role) {
+                setPendingSocialUser(user.firebaseUser);
+                setLoading(false);
+                return;
+            }
 
             if (user.role === 'admin') navigate('/admin');
             else if (user.role === 'driver') navigate('/driver/dashboard');
@@ -28,6 +36,22 @@ export default function LoginPage() {
             if (err.code === 'auth/popup-closed-by-user') {
                 setError('Login cancelled');
             }
+        } finally {
+            if (!pendingSocialUser) setLoading(false);
+        }
+    };
+
+    const confirmSocialRole = async (selectedRole) => {
+        setLoading(true);
+        try {
+            // Re-call the login function but this time providing the explicitly chosen role
+            const user = await loginWithGoogle(selectedRole);
+
+            if (user.role === 'admin') navigate('/admin');
+            else if (user.role === 'driver') navigate('/driver/dashboard');
+            else navigate('/search');
+        } catch (err) {
+            setError('Failed to create account with selected role.');
         } finally {
             setLoading(false);
         }
@@ -62,6 +86,22 @@ export default function LoginPage() {
 
     return (
         <div className="auth-page">
+            {pendingSocialUser && (
+                <div className="modal-overlay">
+                    <div className="modal-content" style={{ textAlign: 'center' }}>
+                        <h2>Complete Your Profile</h2>
+                        <p style={{ marginBottom: 'var(--space-md)' }}>How do you want to use UseMe?</p>
+                        <div style={{ display: 'flex', gap: 'var(--space-md)', justifyContent: 'center' }}>
+                            <button className="btn btn-primary" onClick={() => confirmSocialRole('customer')} disabled={loading}>
+                                Hire a Driver
+                            </button>
+                            <button className="btn btn-outline" onClick={() => confirmSocialRole('driver')} disabled={loading}>
+                                Drive for UseMe
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
             <div className="auth-container">
                 <div className="auth-card">
                     <div style={{ textAlign: 'center', marginBottom: 'var(--space-lg)' }}>

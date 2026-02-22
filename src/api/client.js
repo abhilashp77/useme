@@ -17,12 +17,14 @@ async function request(endpoint, options = {}) {
     }
 
     const response = await fetch(`${API_BASE}${endpoint}`, config);
-    const data = await response.json();
 
     if (!response.ok) {
-        throw new Error(data.error || 'Something went wrong');
+        const error = await response.json().catch(() => ({}));
+        if (error.error === 'needs_role') throw new Error('needs_role');
+        throw new Error(error.error || 'Request failed');
     }
 
+    const data = await response.json();
     return data;
 }
 

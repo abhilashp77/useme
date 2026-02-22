@@ -202,6 +202,10 @@ router.post('/firebase', async (req, res) => {
 
         // Create user if they don't exist
         if (!user) {
+            if (!role) {
+                return res.status(409).json({ error: 'needs_role' });
+            }
+
             currentRole = role;
             if (role === 'driver') {
                 user = {
@@ -240,7 +244,7 @@ router.post('/firebase', async (req, res) => {
                 store.drivers.push(user);
             } else {
                 user = {
-                    id: `${role}-${uuidv4().slice(0, 8)}`,
+                    id: `customer-${uuidv4().slice(0, 8)}`,
                     name: name || email.split('@')[0],
                     email,
                     password: '',
