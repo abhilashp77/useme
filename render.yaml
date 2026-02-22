@@ -1,0 +1,14 @@
+version: "1"
+services:
+  - type: web
+    name: useme
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    branch: main
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: NODE_ENV
+        value: production
